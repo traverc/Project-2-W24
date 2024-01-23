@@ -10,6 +10,9 @@
 #define DUSK           0.005
 #define LIGHTS_ON      0.3
 #define AUTO_LIGHTS     0.7
+//Delays for auto mode
+#define LIGHT_DELAY_DAY           2000
+#define LIGHT_DELAY_DUSK          1000
 
 #define NUMBER_OF_AVG_SAMPLES    100
 #define TIME_INCREMENT_MS        10 //Needed for debounce of ignition?
@@ -140,8 +143,8 @@ void lightControl() {
     strLength = strlen(str);
     uartUsb.write( str, strLength );
            }
-           case (1): { //AUTO
-            sprintf ( str, "LDR Sensor: %.3f\r\n", averageLdrReading() );
+           case (1): { //AUTO - need to add delay mechanisms
+            sprintf ( str, "LDR Sensor: %.3f \r\n", averageLdrReading() );
             strLength = strlen(str);
             uartUsb.write( str, strLength );
              if ( averageLdrReading() > DAYLIGHT ) {
