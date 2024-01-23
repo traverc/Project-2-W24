@@ -12,7 +12,7 @@
 #define AUTO_LIGHTS     0.7
 
 #define NUMBER_OF_AVG_SAMPLES    100
-#define TIME_INCREMENT_MS                       10 //Needed for debounce of ignition?
+#define TIME_INCREMENT_MS        10 //Needed for debounce of ignition?
 
 //=====[Declaration and initialization of public global objects]===============
 
@@ -41,7 +41,7 @@ bool lightSystemActive = false;
 void inputsInit();
 void outputsInit();
 
-void headlightActivationUpdate();
+void ignitionUpdate();
 void setLightMode();
 void lightControl();
 
@@ -55,7 +55,7 @@ int main()
     inputsInit();
     outputsInit();
     while (true) {
-        headlightActivationUpdate();  //check for light system activation 
+        ignitionUpdate();  //check for light system activation 
         setLightMode();   //check light dial and set mode
         lightControl(); //if automode, control light, else set them on/off
         delay(TIME_INCREMENT_MS);
@@ -75,7 +75,7 @@ void outputsInit()
     lowBeamRight = OFF;
 }
 
-void headlightActivationUpdate()
+void ignitionUpdate()
 {
     if ( !lightSystemActive ) {  // Only run if not already active
         if ( driverSeat && ignition) {
@@ -111,7 +111,7 @@ void setLightMode() {
   if (lightSystemActive) {
     sprintf ( str, "Potentiometer: %.3f    ", potAve);
     strLength = strlen(str);
- //   uartUsb.write( str, strLength );
+    uartUsb.write( str, strLength );
     if (potAve <= LIGHTS_ON ) {
         lightMode = 0;
 //        uartUsb.write("Lights ON \r\n", 11);
