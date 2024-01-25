@@ -16,6 +16,7 @@
 
 #define NUMBER_OF_AVG_SAMPLES    100
 #define TIME_INCREMENT_MS        10 //Needed for debounce of ignition?
+#define DEBOUNCE_BUTTON_TIME_MS                 40
 
 //=====[Declaration and initialization of public global objects]===============
 
@@ -35,6 +36,7 @@ AnalogIn ldrSensor(A1);
 
 int lightMode = 0; //lights on = 0, auto = 1, off = 2
 bool engineOn = false;
+int accumulatedDebounceButtonTime     = 0;
 enum buttonState_t {
     BUTTON_UP,
     BUTTON_DOWN,
@@ -47,6 +49,7 @@ buttonState_t ignitionState;
 
 void inputsInit();
 void outputsInit();
+void ignitionButtonInit();
 
 void ignitionUpdate();
 void setLightMode();
@@ -98,12 +101,12 @@ void ignitionUpdate()
     bool ignitionReleasedEvent = debounceIgnitionUpdate();
     
     if ( !engineOn ) {  // Turn engine on if it is off
-        if ( driverSeat && ignitionReleaseEvent) {
+        if ( driverSeat && ignitionReleasedEvent) {
             engineOn = true;
             uartUsb.write ("Engine on \r\n", 12);
         }
     }else{             // Turn engine off if it is on
-        if ( driverSeat && ignitionReleaseEvent) {
+        if ( driverSeat && ignitionReleasedEvent) {
             engineOn = false;
             uartUsb.write ("Engine off \r\n", 13);
         }
@@ -118,7 +121,7 @@ void setLightMode() {
   if (engineOn) {
     sprintf ( str, "Potentiometer: %.3f    ", potAve);
     strLength = strlen(str);
-    uartUsb.write( str, strLength );
+ //   uartUsb.write( str, strLength );
     if (potAve <= LIGHTS_ON ) {
         lightMode = 0;
 //        uartUsb.write("Lights ON \r\n", 11);
@@ -168,7 +171,7 @@ void lightControl() {
            }
            break;
 
-           default;  //indicate something is wrong with OFF/ON
+           default:  //indicate something is wrong with OFF/ON
                 lowBeamLeft = OFF;
                 lowBeamRight = ON;
            break;
