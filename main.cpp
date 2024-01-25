@@ -124,15 +124,15 @@ void setLightMode() {
  //   uartUsb.write( str, strLength );
     if (potAve <= LIGHTS_ON ) {
         lightMode = 0;
-//        uartUsb.write("Lights ON \r\n", 11);
+       uartUsb.write("Lights ON \r\n", 11);
     }
     if (potAve >= LIGHTS_OFF ){
         lightMode = 2;
-//uartUsb.write("Lights OFF \r\n", 12);
+        uartUsb.write("Lights OFF \r\n", 12);
     }
     if ((potAve > LIGHTS_ON) && (potAve < LIGHTS_OFF)) {
         lightMode = 1;
-//uartUsb.write("Lights AUTO \r\n", 13);
+        uartUsb.write("Lights AUTO \r\n", 13);
     }
   }
 }  
@@ -154,7 +154,7 @@ void lightControl() {
            case (1): { //AUTO - need to add delay mechanisms
             sprintf ( str, "LDR Sensor: %.3f \r\n", averageLdrReading() );
             strLength = strlen(str);
-            uartUsb.write( str, strLength );
+ //           uartUsb.write( str, strLength );
              if ( averageLdrReading() > DAYLIGHT ) {
                 lowBeamLeft = ON;
                 lowBeamRight = ON;
