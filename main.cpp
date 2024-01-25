@@ -9,7 +9,7 @@
 #define DAYLIGHT       0.025
 #define DUSK           0.005
 #define LIGHTS_ON      0.3
-#define AUTO_LIGHTS     0.7
+#define LIGHTS_OFF     0.7
 //Delays for auto mode
 #define LIGHT_DELAY_DAY           2000
 #define LIGHT_DELAY_DUSK          1000
@@ -34,10 +34,14 @@ AnalogIn ldrSensor(A1);
 //=====[Declaration and initialization of public global variables]=============
 
 int lightMode = 0; //lights on = 0, auto = 1, off = 2
-
-bool ignitionPressed = false;
-bool ignitionReleased = true;
-bool lightSystemActive = false;
+bool ignitionOn = false;
+enum buttonState_t {
+    BUTTON_UP,
+    BUTTON_DOWN,
+    BUTTON_FALLING,
+    BUTTON_RISING
+};
+buttonState_t ignitionState;
 
 //=====[Declarations (prototypes) of public functions]=========================
 
@@ -60,7 +64,7 @@ int main()
     while (true) {
         ignitionUpdate();  //check for light system activation 
         setLightMode();   //check light dial and set mode
-        lightControl(); //if automode, control light, else set them on/off
+        lightControl(); //if automode, control light, else set lights on/off
         delay(TIME_INCREMENT_MS);
     }
 }
@@ -80,7 +84,9 @@ void outputsInit()
 
 void ignitionUpdate()
 {
-    if ( !lightSystemActive ) {  // Only run if not already active
+    bool ignitionReleasedEvent = debounceButtonUpdate();
+    
+    if ( !lightSystemActive ) {  // Only run if engine not on
         if ( driverSeat && ignition) {
             ignitionPressed = true;
 //          ignitionReleased = false;
@@ -162,6 +168,57 @@ void lightControl() {
            }
        }
    }
+}
+
+bool debounceButtonUpdate()
+{
+    bool ignitionReleasedEvent = false;
+    switch( ignitionState ) {
+
+    case BUTTON_UP:
+        if( ignition ) {
+            enterButtonState = BUTTON_FALLING;
+            accumulatedDebounceButtonTime = 0;
+        }
+        break;
+
+    case BUTTON_FALLING:
+        if( accumulatedDebounceButtonTime >= DEBOUNCE_BUTTON_TIME_MS ) {
+            if( enterButton ) {
+                enterButtonState = BUTTON_DOWN;
+            } else {
+                enterButtonState = BUTTON_UP;
+            }
+        }
+        accumulatedDebounceButtonTime = accumulatedDebounceButtonTime +
+                                        TIME_INCREMENT_MS;
+        break;
+
+    case BUTTON_DOWN:
+        if( !enterButton ) {
+            enterButtonState = BUTTON_RISING;
+            accumulatedDebounceButtonTime = 0;
+        }
+        break;
+
+    case BUTTON_RISING:
+        if( accumulatedDebounceButtonTime >= DEBOUNCE_BUTTON_TIME_MS ) {
+            if( !enterButton ) {
+                enterButtonState = BUTTON_UP;
+                enterButtonReleasedEvent = true;
+            } else {
+                enterButtonState = BUTTON_DOWN;
+            }
+        }
+        accumulatedDebounceButtonTime = accumulatedDebounceButtonTime +
+                                        TIME_INCREMENT_MS;
+        break;
+
+    default:
+        debounceButtonInit();
+        break;
+    }
+    return enterButtonReleasedEvent;
 }
 
 //These two next functions should be generalized into one function
