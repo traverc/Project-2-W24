@@ -34,7 +34,7 @@ AnalogIn ldrSensor(A1);
 //=====[Declaration and initialization of public global variables]=============
 
 int lightMode = 0; //lights on = 0, auto = 1, off = 2
-bool ignitionOn = false;
+bool engineOn = false;
 enum buttonState_t {
     BUTTON_UP,
     BUTTON_DOWN,
@@ -54,6 +54,8 @@ void lightControl();
 
 float averageLdrReading();
 float averagePotReading();
+
+bool debounceIgnitionUpdate();
 
 //=====[Main function, the program entry point after power on or reset]========
 
@@ -84,33 +86,20 @@ void outputsInit()
 
 void ignitionUpdate()
 {
-    bool ignitionReleasedEvent = debounceButtonUpdate();
+    bool ignitionReleasedEvent = debounceIgnitionUpdate();
     
-    if ( !lightSystemActive ) {  // Only run if engine not on
-        if ( driverSeat && ignition) {
-            ignitionPressed = true;
-//          ignitionReleased = false;
+    if ( !engineOn ) {  // Turn engine on if it is off
+        if ( driverSeat && ignitionReleaseEvent) {
+            ignitionOn = true;
+            uartUsb.write ("Engine on \r\n", 12);
         }
-        if ( ignitionPressed && driverSeat) {
-            if ( !ignition ) { //ignition released
-            lightSystemActive = true;
-//            ignitionReleased = true;
-            ignitionPressed = false;
-            uartUsb.write ("Light System Active \r\n", 22);
-            }
-        }
-    } else {  // Deactivate when system is active, and ignition pressed/released
-        if (ignition) {
-            ignitionPressed = true;
-            }
-        if (ignitionPressed && !ignition) {
-            lightSystemActive = false;
-            ignitionPressed = false;
-            uartUsb.write("Light System Inactive\r\n", 24);
-            }
-
+    }else{
+        if ( driverSeat && ignitionReleaseEvent) {
+            ignitionOn = false;
+            uartUsb.write ("Engine off \r\n", 13);
         }
     }
+}
 
 void setLightMode() {
     char str[100];
@@ -170,24 +159,24 @@ void lightControl() {
    }
 }
 
-bool debounceButtonUpdate()
+bool debounceIgnitionUpdate()
 {
     bool ignitionReleasedEvent = false;
     switch( ignitionState ) {
 
     case BUTTON_UP:
         if( ignition ) {
-            enterButtonState = BUTTON_FALLING;
+            ignitionState = BUTTON_FALLING;
             accumulatedDebounceButtonTime = 0;
         }
         break;
 
     case BUTTON_FALLING:
         if( accumulatedDebounceButtonTime >= DEBOUNCE_BUTTON_TIME_MS ) {
-            if( enterButton ) {
-                enterButtonState = BUTTON_DOWN;
+            if( ignition ) {
+                ignitionState = BUTTON_DOWN;
             } else {
-                enterButtonState = BUTTON_UP;
+                ignitionState = BUTTON_UP;
             }
         }
         accumulatedDebounceButtonTime = accumulatedDebounceButtonTime +
@@ -195,19 +184,19 @@ bool debounceButtonUpdate()
         break;
 
     case BUTTON_DOWN:
-        if( !enterButton ) {
-            enterButtonState = BUTTON_RISING;
+        if( !ignition ) {
+            ignitionState = BUTTON_RISING;
             accumulatedDebounceButtonTime = 0;
         }
         break;
 
     case BUTTON_RISING:
         if( accumulatedDebounceButtonTime >= DEBOUNCE_BUTTON_TIME_MS ) {
-            if( !enterButton ) {
-                enterButtonState = BUTTON_UP;
-                enterButtonReleasedEvent = true;
+            if( !ignition ) {
+                ignitionState = BUTTON_UP;
+                ignitionReleasedEvent = true;
             } else {
-                enterButtonState = BUTTON_DOWN;
+                ignitionState = BUTTON_DOWN;
             }
         }
         accumulatedDebounceButtonTime = accumulatedDebounceButtonTime +
@@ -218,7 +207,7 @@ bool debounceButtonUpdate()
         debounceButtonInit();
         break;
     }
-    return enterButtonReleasedEvent;
+    return ignitionReleasedEvent;
 }
 
 //These two next functions should be generalized into one function
