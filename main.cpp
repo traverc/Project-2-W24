@@ -76,6 +76,7 @@ int main()
 void inputsInit()
 {
     driverSeat.mode(PullDown);  //No initialization required for two analog inputs
+    ignitionButtonInit();
 }
 
 void outputsInit()
@@ -84,18 +85,26 @@ void outputsInit()
     lowBeamRight = OFF;
 }
 
+void ignitionButtonInit()
+{
+    if( ignition ) {
+        ignitionState = BUTTON_DOWN;
+    } else {
+        ignitionState = BUTTON_UP;
+    }
+}
 void ignitionUpdate()
 {
     bool ignitionReleasedEvent = debounceIgnitionUpdate();
     
     if ( !engineOn ) {  // Turn engine on if it is off
         if ( driverSeat && ignitionReleaseEvent) {
-            ignitionOn = true;
+            engineOn = true;
             uartUsb.write ("Engine on \r\n", 12);
         }
-    }else{
+    }else{             // Turn engine off if it is on
         if ( driverSeat && ignitionReleaseEvent) {
-            ignitionOn = false;
+            engineOn = false;
             uartUsb.write ("Engine off \r\n", 13);
         }
     }
@@ -106,7 +115,7 @@ void setLightMode() {
     int strLength;
     float potAve = averagePotReading();
 
-  if (lightSystemActive) {
+  if (engineOn) {
     sprintf ( str, "Potentiometer: %.3f    ", potAve);
     strLength = strlen(str);
     uartUsb.write( str, strLength );
@@ -114,13 +123,13 @@ void setLightMode() {
         lightMode = 0;
 //        uartUsb.write("Lights ON \r\n", 11);
     }
-    if ((potAve > LIGHTS_ON) && (potAve <= AUTO_LIGHTS) ){
-        lightMode = 1;
-//uartUsb.write("Lights AUTO \r\n", 13);
-    }
-    if ((potAve > AUTO_LIGHTS)) {
+    if (potAve >= LIGHTS_OFF ){
         lightMode = 2;
 //uartUsb.write("Lights OFF \r\n", 12);
+    }
+    if ((potAve > LIGHTS_ON) && (potAve < LIGHTS_OFF)) {
+        lightMode = 1;
+//uartUsb.write("Lights AUTO \r\n", 13);
     }
   }
 }  
@@ -129,15 +138,16 @@ void lightControl() {
     char str[100];
     int strLength;
  
-   if (lightSystemActive) {
+   if (engineOn) {
        switch (lightMode) {
            case (0): { //OFF
-               lowBeamLeft = OFF;
-               lowBeamRight = OFF;
+               lowBeamLeft = ON;
+               lowBeamRight = ON;
     sprintf ( str, "Potentiometer: %.3f    ", averagePotReading() );
     strLength = strlen(str);
     uartUsb.write( str, strLength );
            }
+           break;
            case (1): { //AUTO - need to add delay mechanisms
             sprintf ( str, "LDR Sensor: %.3f \r\n", averageLdrReading() );
             strLength = strlen(str);
@@ -151,10 +161,17 @@ void lightControl() {
                 lowBeamRight = OFF;
                 }  
            }
-           case (2): { //ON
-                lowBeamLeft = ON;
-                lowBeamRight = ON;
+           break;
+           case (2): { //OFF
+                lowBeamLeft = OFF;
+                lowBeamRight = OFF;
            }
+           break;
+
+           default;  //indicate something is wrong with OFF/ON
+                lowBeamLeft = OFF;
+                lowBeamRight = ON;
+           break;
        }
    }
 }
@@ -204,7 +221,7 @@ bool debounceIgnitionUpdate()
         break;
 
     default:
-        debounceButtonInit();
+        ignitionButtonInit();
         break;
     }
     return ignitionReleasedEvent;
@@ -214,7 +231,7 @@ bool debounceIgnitionUpdate()
 //with the sensor sent as a parameter
 float averageLdrReading()
 {
-    float ldrSensorAverage  = 0.0;
+float ldrSensorAverage  = 0.0;
 float ldrSensorSum      = 0.0;
 float ldrSensorReadingsArray[NUMBER_OF_AVG_SAMPLES];
 float ldrSensorReading  = 0.0;
